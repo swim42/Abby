@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Abby — Starlit Poem & Song</title>
+  <meta name="description" content="A starlit, gyroscope-reactive page with a poem for Abby and a glowing floral Spotify card." />
+  <meta name="color-scheme" content="dark light">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Great+Vibes&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#080914;
+      --ink:#E9E8FF;
+      --muted:#B9B8D9;
+      --accent:#FF6AD5;      /* pink glow */
+      --accent-soft:#ffa3e6; /* softer pink */
+      --card:#0E1022;
+      --glass:rgba(255,255,255,0.06);
+      --ring:rgba(255,106,213,0.45);
+      --maxw:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 800px at 70% -10%, #1c1e3b 0%, #0b0d20 38%, var(--bg) 70%) fixed;
+      color:var(--ink);
+      font: 16px/1.6 "Marcellus", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      overflow-x:hidden;
+    }
+
+    /* Canvas stars */
+    #stars{
+      position:fixed; inset:0;
+      z-index:-1;
+      display:block;
+      background: transparent;
+    }
+
+    /* Frosted container */
+    .wrap{
+      max-width:var(--maxw);
+      margin-inline:auto;
+      padding: clamp(16px, 3vw, 36px);
+    }
+    header{
+      display:grid;
+      gap:10px;
+      padding: clamp(18px, 3vw, 28px);
+      border-radius:24px;
+      backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      outline:1px solid rgba(255,255,255,0.07);
+      box-shadow:
+        0 10px 30px rgba(0,0,0,0.45),
+        0 0 0 2px rgba(255,255,255,0.02) inset;
+    }
+    h1{
+      margin:0;
+      font-family:"Great Vibes", cursive;
+      font-weight:400;
+      letter-spacing:.5px;
+      font-size: clamp(44px, 8vw, 96px);
+      line-height:1;
+      text-shadow: 0 0 18px rgba(255, 106, 213, 0.28), 0 0 2px rgba(255,255,255,0.35);
+    }
+    .subtitle{
+      color:var(--muted);
+      font-size:clamp(14px, 2.2vw, 18px);
+    }
+
+    /* Buttons */
+    .controls{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:6px;
+    }
+    .btn{
+      appearance:none; border:0; cursor:pointer;
+      padding:10px 14px; border-radius:12px;
+      font:inherit; color:var(--ink);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+      outline:1px solid rgba(255,255,255,0.08);
+      transition: transform .2s ease, box-shadow .2s ease, outline-color .2s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0); }
+    .btn.pink{
+      box-shadow: 0 0 24px rgba(255,106,213,0.25), 0 2px 0 rgba(0,0,0,0.25);
+      outline-color: var(--ring);
+    }
+
+    /* Grid sections */
+    .grid{
+      display:grid;
+      gap: clamp(16px, 2.4vw, 28px);
+      grid-template-columns: 1fr;
+      margin-top: clamp(18px, 3vw, 28px);
+    }
+    @media (min-width: 920px){
+      .grid{ grid-template-columns: 1.1fr .9fr; align-items:stretch; }
+    }
+
+    /* Poem card */
+    .card{
+      border-radius:24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      outline:1px solid rgba(255,255,255,0.07);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      position:relative;
+      overflow:hidden;
+    }
+    .card .inner{
+      padding: clamp(18px, 3.2vw, 30px);
+      position:relative;
+      z-index:2;
+    }
+    .card h2{
+      margin:0 0 8px 0;
+      font-size: clamp(22px, 3.2vw, 30px);
+      letter-spacing:.5px;
+    }
+    .poem{
+      font-size: clamp(16px, 2.3vw, 18px);
+      color:var(--ink);
+      opacity:.96;
+      white-space: pre-line;
+    }
+    .soft-glow{
+      position:absolute; inset:-40%;
+      background: radial-gradient(closest-side, rgba(255,106,213,0.06), transparent 70%),
+                  radial-gradient(circle at 80% 20%, rgba(132, 94, 247, 0.06), transparent 60%);
+      filter: blur(40px);
+      z-index:1;
+      pointer-events:none;
+    }
+
+    /* Spotify flower-frame card */
+    .flower-card{
+      --borderSize: 22px; /* visual thickness of the flower border */
+      position:relative;
+      border-radius:26px;
+      background: var(--card);
+      box-shadow:
+        0 0 40px rgba(255,106,213,0.18),
+        0 10px 30px rgba(0,0,0,0.5);
+      overflow:hidden;
+      isolation:isolate;
+    }
+    /* Glowing aura */
+    .flower-card::before{
+      content:"";
+      position:absolute; inset:-1.5%;
+      border-radius:28px;
+      background: radial-gradient(60% 60% at 50% 0%, rgba(255,106,213,0.25), transparent 70%),
+                  radial-gradient(80% 60% at 20% 100%, rgba(255,106,213,0.18), transparent 75%);
+      filter: blur(24px);
+      z-index:0;
+      pointer-events:none;
+      opacity:.9;
+      animation: pulse 5s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{ transform:scale(1); opacity:.9; }
+      50%{ transform:scale(1.02); opacity:1; }
+    }
+    /* The actual pink flower border using an SVG border-image */
+    .flower-frame{
+      position:relative;
+      border-radius:24px;
+      border-style:solid;
+      border-width: var(--borderSize);
+      /* Inline SVG tile (a 6-petal flower). Repeats around the border. */
+      border-image-source: url('data:image/svg+xml;utf8,\
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">\
+          <defs>\
+            <radialGradient id="g" cx="50%" cy="50%" r="50%">\
+              <stop offset="0%" stop-color="%23ffccf0"/>\
+              <stop offset="60%" stop-color="%23ff8edb"/>\
+              <stop offset="100%" stop-color="%23ff6ad5"/>\
+            </radialGradient>\
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">\
+              <feGaussianBlur stdDeviation="2" result="b"/>\
+              <feMerge><feMergeNode in="b"/><feMergeNode in="b"/></feMerge>\
+            </filter>\
+          </defs>\
+          <rect x="0" y="0" width="64" height="64" fill="none"/>\
+          <g transform="translate(32,32)">\
+            <g filter="url(%23glow)">\
+              <path d="M0,-18 C8,-18 16,-10 16,0 C16,10 8,18 0,18 C-8,18 -16,10 -16,0 C-16,-10 -8,-18 0,-18Z" fill="url(%23g)" transform="rotate(0)"/>\
+              <path d="M0,-18 C8,-18 16,-10 16,0 C16,10 8,18 0,18 C-8,18 -16,10 -16,0 C-16,-10 -8,-18 0,-18Z" fill="url(%23g)" transform="rotate(60)"/>\
+              <path d="M0,-18 C8,-18 16,-10 16,0 C16,10 8,18 0,18 C-8,18 -16,10 -16,0 C-16,-10 -8,-18 0,-18Z" fill="url(%23g)" transform="rotate(120)"/>\
+              <path d="M0,-18 C8,-18 16,-10 16,0 C16,10 8,18 0,18 C-8,18 -16,10 -16,0 C-16,-10 -8,-18 0,-18Z" fill="url(%23g)" transform="rotate(180)"/>\
+              <path d="M0,-18 C8,-18 16,-10 16,0 C16,10 8,18 0,18 C-8,18 -16,10 -16,0 C-16,-10 -8,-18 0,-18Z" fill="url(%23g)" transform="rotate(240)"/>\
+              <path d="M0,-18 C8,-18 16,-10 16,0 C16,10 8,18 0,18 C-8,18 -16,10 -16,0 C-16,-10 -8,-18 0,-18Z" fill="url(%23g)" transform="rotate(300)"/>\
+              <circle cx="0" cy="0" r="4" fill="%23fff"/>\
+            </g>\
+          </g>\
+        </svg>');
+      border-image-slice: 30 fill;
+      border-image-repeat: round;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      box-shadow:
+        0 0 0 2px rgba(255,106,213,0.22) inset,
+        0 0 30px rgba(255,106,213,0.18);
+      overflow:hidden;
+    }
+    .flower-card .inner{
+      position:relative; z-index:1;
+      padding: clamp(14px, 2.2vw, 22px);
+    }
+    .flower-card h3{
+      margin:0 0 10px 0;
+      font-size: clamp(18px, 2.6vw, 22px);
+      font-weight:500;
+      letter-spacing:.4px;
+      color:#ffe8f7;
+      text-shadow: 0 0 10px rgba(255,106,213,0.35);
+    }
+
+    iframe.spotify{
+      width:100%;
+      min-height: 352px;
+      border:0; border-radius:16px;
+      display:block;
+      background:#000;
+      filter: saturate(1.05) contrast(1.02) drop-shadow(0 10px 18px rgba(0,0,0,0.35));
+    }
+
+    footer{
+      margin: clamp(14px, 3vw, 24px) 0 40px;
+      text-align:center; color:var(--muted); font-size:14px;
+      opacity:.9;
+    }
+
+    /* Motion preferences */
+    @media (prefers-reduced-motion: reduce){
+      .btn, .flower-card::before{ animation:none !important; transition:none !important; }
+    }
+
+    /* Motion permission banner */
+    .motion-banner{
+      position: fixed; left:50%; bottom: 18px; transform: translateX(-50%);
+      background: rgba(14,16,34,0.6);
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 10px 14px;
+      display:flex; gap:10px; align-items:center;
+      color: var(--ink);
+      z-index: 50;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    }
+    .motion-banner[hidden]{ display:none; }
+    .motion-banner .note{ opacity:.85; font-size:14px; }
+  </style>
+</head>
+<body>
+  <canvas id="stars" aria-hidden="true"></canvas>
+
+  <div class="wrap">
+    <header>
+      <h1>For Abby</h1>
+      <div class="subtitle">A little galaxy that moves when you do — with a poem and a song that glow like memories.</div>
+      <div class="controls">
+        <button id="toggleMotion" class="btn pink" type="button" aria-pressed="true">Motion: On</button>
+        <button id="recenter" class="btn" type="button">Recenter Stars</button>
+      </div>
+    </header>
+
+    <section class="grid" aria-label="Poem and Song">
+      <!-- Poem -->
+      <article class="card" aria-labelledby="poemTitle">
+        <div class="soft-glow" aria-hidden="true"></div>
+        <div class="inner">
+          <h2 id="poemTitle">A Poem for Abby</h2>
+          <p class="poem" id="poem">
+Abby, in the hush between heartbeats,
+you arrive like dawn in a room of stars—
+soft as a wish, certain as morning.
+
+You turn ordinary seconds into lanterns,
+hang them in the corridors of my day,
+and suddenly everything remembers how to glow.
+
+When you laugh, the night takes notes.
+When you speak, the constellations lean closer.
+When you look my way, the sky forgets its distance.
+
+If I could bottle the way you make time feel,
+I’d label it “home,”
+and keep it where I can reach it whenever I need light.
+
+You are the secret the universe told me gently:
+that wonder can be a person,
+and tonight, wonder has your name.</p>
+        </div>
+      </article>
+
+      <!-- Spotify flower-frame card -->
+      <aside class="flower-card" aria-labelledby="songTitle">
+        <div class="flower-frame">
+          <div class="inner">
+            <h3 id="songTitle">A Song for the Moment</h3>
+            <!-- Spotify embed for the provided track -->
+            <iframe class="spotify"
+              title="Spotify player"
+              loading="lazy"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              src="https://open.spotify.com/embed/track/6Cg8d5DzpKHGci9SPk8JeL?utm_source=generator">
+            </iframe>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <footer>
+      Made with stardust &amp; care — for Abby.
+    </footer>
+  </div>
+
+  <!-- Motion permission banner (iOS 13+ requires user gesture) -->
+  <div class="motion-banner" id="motionBanner" hidden>
+    <span class="note">Enable motion access to let the stars follow your gyroscope.</span>
+    <button id="enableMotion" class="btn pink" type="button">Enable</button>
+  </div>
+
+  <script>
+  (() => {
+    // ====== STARFIELD SETUP ======
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d', { alpha: true });
+    let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    let W=0, H=0;
+
+    // Parallax control
+    let motionEnabled = true;
+    let tiltX = 0, tiltY = 0;      // from gyro or mouse
+    let targetX = 0, targetY = 0;  // smoothed target
+    let baseOffsetX = 0, baseOffsetY = 0; // recenter baseline
+
+    // Layers of stars for depth
+    const layers = [
+      { count: 220, size:[0.6,1.2], speed: 0.06, color:'rgba(255,255,255,0.95)' },
+      { count: 160, size:[0.8,1.8], speed: 0.12, color:'rgba(180,200,255,0.9)' },
+      { count: 80,  size:[1.2,2.4], speed: 0.20, color:'rgba(255,170,240,0.95)' },
+    ];
+    const stars = [];
+
+    function resize(){
+      const { innerWidth:iw, innerHeight:ih } = window;
+      W = canvas.width = Math.floor(iw * dpr);
+      H = canvas.height = Math.floor(ih * dpr);
+      canvas.style.width = iw + 'px';
+      canvas.style.height = ih + 'px';
+      // Re-generate stars
+      stars.length = 0;
+      for (let li=0; li<layers.length; li++){
+        const L = layers[li];
+        for (let i=0; i<L.count; i++){
+          stars.push({
+            x: Math.random()*W,
+            y: Math.random()*H,
+            r: (Math.random()*(L.size[1]-L.size[0]) + L.size[0]) * dpr,
+            z: li,
+            tw: Math.random()*Math.PI*2,
+            tws: Math.random()*0.03 + 0.005
+          });
+        }
+      }
+    }
+
+    function draw(){
+      // Subtle space tint
+      ctx.clearRect(0,0,W,H);
+      // Parallax offset
+      targetX += (tiltX - targetX) * 0.06;
+      targetY += (tiltY - targetY) * 0.06;
+
+      const px = (targetX + baseOffsetX);
+      const py = (targetY + baseOffsetY);
+
+      for (let li=0; li<layers.length; li++){
+        const L = layers[li];
+        ctx.save();
+        // Parallax translate per layer
+        ctx.translate(px * (li+1) * L.speed * dpr, py * (li+1) * L.speed * dpr);
+
+        // Subtle nebula haze per layer
+        if(li===0){
+          const g = ctx.createRadialGradient(W*0.7, H*0.2, 0, W*0.7, H*0.2, Math.max(W,H)*0.7);
+          g.addColorStop(0, 'rgba(120,90,255,0.05)');
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(0,0,W,H);
+        }
+
+        ctx.fillStyle = L.color;
+        for (let s of stars){
+          if (s.z !== li) continue;
+          s.tw += s.tws;
+          const pulse = 0.65 + Math.sin(s.tw)*0.35;
+          const rr = s.r * pulse;
+
+          // soft glow
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, rr*2.2, 0, Math.PI*2);
+          ctx.fillStyle = (li===2) ? 'rgba(255,106,213,0.09)' : 'rgba(255,255,255,0.05)';
+          ctx.fill();
+
+          // crisp core
+          ctx.globalAlpha = 1;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, rr, 0, Math.PI*2);
+          ctx.fillStyle = L.color;
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      requestAnimationFrame(draw);
+    }
+
+    // Mouse fallback
+    let mouseActive = false;
+    window.addEventListener('mousemove', (e)=>{
+      mouseActive = true;
+      const { innerWidth:iw, innerHeight:ih } = window;
+      const nx = (e.clientX / iw) * 2 - 1;
+      const ny = (e.clientY / ih) * 2 - 1;
+      if (motionEnabled){
+        tiltX = nx * 40; // px parallax intent
+        tiltY = ny * 40;
+      }
+    }, {passive:true});
+
+    // Recenter baseline
+    document.getElementById('recenter').addEventListener('click', ()=>{
+      baseOffsetX = -targetX;
+      baseOffsetY = -targetY;
+    });
+
+    // Motion toggle
+    const toggleBtn = document.getElementById('toggleMotion');
+    toggleBtn.addEventListener('click', ()=>{
+      motionEnabled = !motionEnabled;
+      toggleBtn.setAttribute('aria-pressed', String(motionEnabled));
+      toggleBtn.textContent = 'Motion: ' + (motionEnabled ? 'On' : 'Off');
+      if (!motionEnabled){ tiltX = tiltY = 0; }
+    });
+
+    // ====== DEVICE ORIENTATION (gyro) ======
+    const banner = document.getElementById('motionBanner');
+    const enableBtn = document.getElementById('enableMotion');
+
+    function handleOrientation(ev){
+      if(!motionEnabled) return;
+      // On most devices: gamma ~ left/right, beta ~ front/back
+      const { beta, gamma } = ev;
+      // Normalize into a reasonable parallax range
+      const nx = Math.max(-45, Math.min(45, gamma || 0)) / 45; // -1..1
+      const ny = Math.max(-45, Math.min(45, beta  || 0)) / 45;
+      tiltX = nx * 60; // px parallax intent
+      tiltY = ny * 60;
+    }
+
+    async function tryEnableMotion(){
+      if (typeof DeviceOrientationEvent === 'undefined'){
+        // Not supported — rely on mouse
+        return;
+      }
+      // iOS 13+ requires permission request
+      if (typeof DeviceOrientationEvent.requestPermission === 'function'){
+        banner.hidden = false;
+        enableBtn.onclick = async ()=>{
+          try{
+            const res = await DeviceOrientationEvent.requestPermission();
+            if (res === 'granted'){
+              window.addEventListener('deviceorientation', handleOrientation, { passive:true });
+              banner.hidden = true;
+            } else {
+              // denied—fallback remains
+              banner.hidden = true;
+            }
+          } catch(e){
+            banner.hidden = true;
+          }
+        };
+      } else {
+        // Android/others: just attach
+        window.addEventListener('deviceorientation', handleOrientation, { passive:true });
+      }
+    }
+
+    // Init
+    resize();
+    window.addEventListener('resize', resize, {passive:true});
+    draw();
+    tryEnableMotion();
+
+  })();
+  </script>
+</body>
+</html>
